@@ -1,0 +1,71 @@
+.TH MYSQL-QUICK-CLONE.PL 8 "v\ 1.0" "Thu, March  4, 2010" "DARWIN\ \-\ MAC\ OS\ X"
+.SH NAME
+.B mysql-quick-clone.pl
+\- Database cloning tool
+.SH SYNOPSIS
+mysql-quick-clone.pl [-c config.conf] [--sh=sourceHost --sp=sourcePort --sd=sourceDatabase --su=sourceUser --spw=sourcePassword --dh=destHost --dp=destPort --dd=destDatabase --du=destUser --dpw=destPassword] [--all] [--new] [--5] [tables ...]
+.br
+.SH OPTIONS
+.TP
+.B -c
+load options from a config file
+.TP
+.B --sh
+source host
+.TP
+.B --sp
+source port
+.TP
+.B --sd
+source database
+.TP
+.B --su
+source user
+.TP
+.B --spw
+source password
+.TP
+.B --dh
+destination host
+.TP
+.B --dp
+destination port
+.TP
+.B --dd
+destination database
+.TP
+.B --du
+destination user
+.TP
+.B --dpw
+destination password
+.TP
+.B --all
+copies all the tables from the source database
+.TP
+.B --new
+copies the table structures to an empty database
+.TP
+.B --5
+some systems have '5' as a suffix on the mysql commands, most users will not need this
+.TP
+.B tables
+this really isn't like the other options, its just a list of table names that are to be cloned, it isn't necessary if --all is used.
+.SH DESCRIPTION
+This utility gives a user the ability to clone tables across databases. The source and destination databases do not need to be on the same server; however, a shared directory must exist for the binary file transfer.
+.br
+.SH BUGS
+does not work when the source table being copied has '_wrk' at the end of the name.
+.SH VERSION
+This documentation describes
+.B mysql-quick-clone.pl
+version 1.0
+.SH "SEE ALSO"
+mysql-quick-clone.conf(8)
+.br
+.I  site
+.SH AUTHOR
+.br
+.B Braxton Huggins (current) and Alex (previous)
+.br
+.I \<braxton@delorum.com\>

@@ -1,0 +1,56 @@
+.TH MYSQL-QUICK-CLONE.CONF 8 "v\ 1.0" "Thu, March  4, 2010" "DARWIN\ \-\ MAC\ OS\ X"
+.SH NAME
+.B mysql-quick-clone.conf
+\- Config file for mysql-quick-clone.pl
+.SH SYNOPSIS
+mysql-quick-clone.pl -c config.conf
+.br
+.SH OPTIONS
+.TP
+.B [source]
+host= this is the host name or address
+.br
+port= this is the port number for the database connection
+.br
+database= this is the database name to connect to
+.br
+user= this is the username to use to log into the database
+.br
+password= this is the password to log into the database
+.TP
+.B [destination]
+host= this is the host name or address
+.br
+port= this is the port number for the database connection
+.br
+database= this is the database name to connect to
+.br
+user= this is the username to use to log into the database
+.br
+password= this is the password to log into the database
+.TP
+.B [general]
+all=0 set this to 1 to copy all the tables
+.br
+new=0 set this to 1 if the tables don't exist on the destination database
+.br
+siteRoot= set this to a folder that is accessable to both the source and destination servers
+.TP
+.B [tables]
+tables= place the list of tables between the <<EOT and EOT
+.SH DESCRIPTION
+This config file has several options for configuring the mysql-quick-clone.pl program to help simplify the management of database table cloning
+.br
+.SH VERSION
+This documentation describes
+.B mysql-quick-clone.conf
+version 1.0
+.SH "SEE ALSO"
+mysql-quick-clone.pl(8)
+.br
+.I  site
+.SH AUTHOR
+.br
+.B Braxton Huggins
+.br
+.I \<braxton@delorum.com\>
