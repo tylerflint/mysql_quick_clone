@@ -81,6 +81,7 @@ foreach $arg (@ARGV) {
 
 if ($configFile)
 {
+	print('Using the $configFile for configuration\n');
 	$cfg = Config::IniFiles->new( -file => $configFile );
 	
 	$sourceHost = $cfg->val('source', 'host');
