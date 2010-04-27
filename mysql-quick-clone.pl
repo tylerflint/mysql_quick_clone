@@ -59,7 +59,7 @@ foreach $arg (@ARGV) {
 				$destUser = $value;
 			} elsif ($argSplit[0] eq '--dpw') {
 				$destPass = $value;			
-			} elsif ($argSplit[0] eq '--sitedir') {
+			} elsif ($argSplit[0] eq '--dir') {
 				$siteRoot = $value;
 			}elsif ($argSplit[0] eq '--c') {
 				$configFile = $value;
@@ -100,7 +100,7 @@ if ($configFile)
 	
 	$all = $cfg->val('general', 'all', 0);
 	$new = $cfg->val('general', 'new', 0);
-	$siteRoot = $cfg->val('general', 'siteRoot');
+	$siteRoot = $cfg->val('general', 'dir');
 }
 
 # Verify that all required arguments were provided
@@ -164,7 +164,7 @@ if ($new == 1)
 
 my $errorFlag = 0;
 
-my $backupPath = $siteRoot . "/utility/clone_backup.sql";
+my $backupPath = $siteRoot . "/clone_backup.sql";
 my $tableString = join(" ", @tables);
 
 # Backup the tables that will be affected
@@ -178,7 +178,7 @@ foreach $tableName (@tables) {
 	my $workTable = $tableName . '_wrk';
 	my $oldTable = $tableName . '_old';
 	#my $filePath = "$tableName.wrk";
-	my $filePath = $siteRoot . "/utility/$workTable.wrk";	
+	my $filePath = $siteRoot . "/$workTable.wrk";	
 	
 	# create file
 	`$mysql --host=$sourceHost --user=$sourceUser --password=$sourcePass $sourceDatabase -e "SELECT * FROM $tableName" | sed 's/NULL/\\\\N/g' > $filePath`;
