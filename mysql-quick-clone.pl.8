@@ -3,7 +3,7 @@
 .B mysql-quick-clone.pl
 \- Database cloning tool
 .SH SYNOPSIS
-mysql-quick-clone.pl [--c=config.conf] [--sh=sourceHost --sp=sourcePort --sd=sourceDatabase --su=sourceUser --spw=sourcePassword --dh=destHost --dp=destPort --dd=destDatabase --du=destUser --dpw=destPassword] [--all] [--new] [--5] [tables ...]
+mysql-quick-clone.pl [--c=config.conf] [--sh=sourceHost --sp=sourcePort --sd=sourceDatabase --su=sourceUser --spw=sourcePassword --dh=destHost --dp=destPort --dd=destDatabase --du=destUser --dpw=destPassword] [--all] [--new] [--5] [--nobackup] [tables ...]
 .br
 .SH OPTIONS
 .TP
@@ -51,6 +51,9 @@ copies the table structures to an empty database
 .TP
 .B --5
 some systems have '5' as a suffix on the mysql commands, most users will not need this
+.TP
+.B --nobackup
+this will disable the automatic backup of destination tables before the quick cloning.
 .TP
 .B tables
 this really isn't like the other options, its just a list of table names that are to be cloned, it isn't necessary if --all is used.

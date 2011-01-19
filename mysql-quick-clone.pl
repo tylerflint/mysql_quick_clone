@@ -36,6 +36,8 @@ my $destDatabase;
 my $destUser;
 my $destPass;
 
+my $backup = 1;
+
 my $siteRoot;
 my $configFile;
 my $cfg;
@@ -89,8 +91,10 @@ foreach $arg (@ARGV) {
 			$mysql = 'mysql5';
 			$mysqldump = 'mysqldump5';
 			$mysqlimport = 'mysqlimport5'; 
-		} elsif( $arg eq '--new'){
+		} elsif( $arg eq '--new') {
 			$new = 1;
+		} elsif( $arg eq '--nobackup') {
+		    $backup = 0;
 		}
 		
 	} else {
@@ -98,8 +102,7 @@ foreach $arg (@ARGV) {
 	}			
 }
 
-if ($configFile)
-{
+if ($configFile) {
 	print('Using the $configFile for configuration\n');
 	$cfg = Config::IniFiles->new( -file => $configFile );
 	
@@ -119,11 +122,12 @@ if ($configFile)
 	
 	$all = $cfg->val('general', 'all', 0);
 	$new = $cfg->val('general', 'new', 0);
+	$backup = $cfg->val('general', 'backup', 1);
 	$siteRoot = $cfg->val('general', 'dir');
 }
 
 # Verify that all required arguments were provided
-if(!($sourceHost && $sourcePort && $sourceDatabase && $sourceUser && $sourcePass &&
+if (!($sourceHost && $sourcePort && $sourceDatabase && $sourceUser && $sourcePass &&
 	$destHost && $destPort && $destDatabase && $destUser && $destPass && $siteRoot)) {		
 	print("Please input all required arguments\n");
 	exit;
@@ -150,8 +154,7 @@ if(!$destConn) {
 	exit;
 }
 
-if ($all == 1)
-{
+if ($all == 1) {
 	my $handle = $sourceConn->prepare("SHOW TABLES");
 	$handle->execute();
 	$handle->bind_columns(\$name);
@@ -165,16 +168,14 @@ if ($all == 1)
 	}	
 }
 
-if ($new == 1)
-{
+if ($new == 1) {
 	$destConn->do("SET FOREIGN_KEY_CHECKS = 0");
 	$destConn->do("SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'");
 	foreach $table (@tables) {
 		my $handle = $sourceConn->prepare("SHOW CREATE TABLE $table");
 		$handle->execute();
 		$handle->bind_columns(\$name, \$create_statement);
-		while($handle->fetch())
-		{
+		while($handle->fetch()) {
 			$destConn->do($create_statement);
 		}
 	}
@@ -186,10 +187,12 @@ my $errorFlag = 0;
 my $backupPath = $siteRoot . "/clone_backup.sql";
 my $tableString = join(" ", @tables);
 
-# Backup the tables that will be affected
-print("Backing up destination tables....");
-`$mysqldump --host=$destHost --user=$destUser --password=$destPass $destDatabase $tableString > $backupPath`;
-print("Done\n\n");
+if ($backup) {
+    # Backup the tables that will be affected
+    print("Backing up destination tables....");
+    `$mysqldump --host=$destHost --user=$destUser --password=$destPass $destDatabase $tableString > $backupPath`;
+    print("Done\n\n");
+}
 
 foreach $tableName (@tables) {
 	
@@ -230,83 +233,57 @@ foreach $tableName (@tables) {
 			$newHandle->fetch();
 			#print($newField." ".$cloneeField."\n");
 			$tableSame = ($tableSame)&&($newField eq $cloneeField)&&($newType eq $cloneeType)&&($newNull eq $cloneeNull);
-			if(defined($newKey))
-			{
-				if(defined($cloneeKey))
-				{
+			if(defined($newKey)) {
+				if(defined($cloneeKey)) {
 					$tableSame = ($tableSame)&&($newKey eq $cloneeKey);
+				} else {
+					$tableSame = 0;
 				}
-				else
-				{
+			} else {
+				if(defined($cloneeKey)) {
 					$tableSame = 0;
 				}
 			}
-			else
-			{
-				if(defined($cloneeKey))
-				{
-					$tableSame = 0;
-				}
-			}
-			if(defined($newDefault))
-			{
-				if(defined($cloneeDefault))
-				{
+			if(defined($newDefault)) {
+				if(defined($cloneeDefault)) {
 					$tableSame = ($tableSame)&&($newDefault eq $cloneeDefault);
+				} else {
+					$tableSame = 0;
 				}
-				else
-				{
+			} else {
+				if(defined($cloneeDefault)) {
 					$tableSame = 0;
 				}
 			}
-			else
-			{
-				if(defined($cloneeDefault))
-				{
-					$tableSame = 0;
-				}
-			}
-			if(defined($newExtra))
-			{
-				if(defined($cloneeExtra))
-				{
+			if(defined($newExtra)) {
+				if(defined($cloneeExtra)) {
 					$tableSame = ($tableSame)&&($newExtra eq $cloneeExtra);
-				}
-				else
-				{
+				} else {
 					$tableSame = 0;
 				}
-			}
-			else
-			{
-				if(defined($cloneeExtra))
-				{
+			} else {
+				if(defined($cloneeExtra)) {
 					$tableSame = 0;
 				}
 			}             
-			            
-			             
 		}
-		while($newHandle->fetch())
-		{
+		
+		while($newHandle->fetch()) {
 			$tableSame = 0;
 		}
 		
-		if ($tableSame)
-		{
+		if ($tableSame) {
 			print("Tables are the same!\n");
 			# Create table at destination
 			$destConn->do("CREATE TABLE $workTable LIKE $tableName");
 		}
-		else
-		{
+		else {
 			print("Tables are different, cloning new table structure\n");
 			$sourceConn->do("CREATE TABLE $workTable LIKE $tableName");
 			$handle = $sourceConn->prepare("SHOW CREATE TABLE $workTable");
 			$handle->execute();
 			$handle->bind_columns(\$name, \$create_statement);
-			while($handle->fetch())
-			{
+			while($handle->fetch()) {
 				$destConn->do($create_statement);
 			}
 			$sourceConn->do("DROP TABLE IF EXISTS $workTable");
@@ -351,7 +328,6 @@ foreach $tableName (@tables) {
 				if($destCount == $sourceCount) {
 					# Rename tables
 					
-					
 				} else {
 					#$destConn->do("DROP TABLE $workTable");
 					$errorFlag = 1;
@@ -384,8 +360,6 @@ foreach $tableName (@tables) {
 	print("Done\n\n");
 }
 
-
-
 foreach $tableName (@tables) {
 
 	my $oldTable = $tableName . '_old';
@@ -398,8 +372,7 @@ foreach $tableName (@tables) {
 	# Get the table indices and drop all of them
 	my @indices = &getTableConstraints($oldTable);
 	
-	foreach $index (@indices) 
-	{
+	foreach $index (@indices) {
 		if(defined $index && defined $oldTable) {
 			$destConn->do("ALTER TABLE $oldTable DROP FOREIGN KEY '$index'");
 		}
@@ -420,8 +393,7 @@ my $end = time();
 
 print "Total execution time: ", &formatTime($end - $start), "\n";
 
-sub getTableConstraints
-{
+sub getTableConstraints {
 	my $tableName = shift;
 	
 	my $handle = $destConn->prepare("select CONSTRAINT_NAME from information_schema.TABLE_CONSTRAINTS where CONSTRAINT_TYPE = 'FOREIGN KEY' AND TABLE_NAME = '$tableName' GROUP BY CONSTRAINT_NAME");
@@ -430,13 +402,11 @@ sub getTableConstraints
 	
 	my @resultArray;
 	
-	while (@row = $handle->fetchrow_array())
-	{
+	while (@row = $handle->fetchrow_array()) {
 		my $keyName = $row[2];
 		
 		push(@resultArray, $keyName);
 	}
-	
 	return @resultArray;
 }
 
@@ -446,7 +416,7 @@ $sourceConn->do("UPDATE core_flag SET state = 0 WHERE flag_code = 'delorum_push_
 ####################################
 # Get the time in a human readable format
 ####################################
-sub formatTime{
+sub formatTime {
 	my $seconds = shift;
 	my @parts = gmtime($seconds);
 	my $time = sprintf "%d minutes, %d seconds", @parts[1,0];
