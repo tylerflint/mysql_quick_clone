@@ -45,6 +45,7 @@ my $cfg;
 my @tables;
 my $all = 0;
 my $new = 0;
+my $useScp = 0;
 
 my $mysql = 'mysql';
 my $mysqldump = 'mysqldump';
@@ -95,6 +96,8 @@ foreach $arg (@ARGV) {
 			$new = 1;
 		} elsif( $arg eq '--nobackup') {
 		    $backup = 0;
+		} elsif( $arg eq '--scp') {
+		    $useScp  = 1;
 		}
 		
 	} else {
@@ -103,7 +106,7 @@ foreach $arg (@ARGV) {
 }
 
 if ($configFile) {
-	print('Using the $configFile for configuration\n');
+	print("Using the file '$configFile' for configuration\n");
 	$cfg = Config::IniFiles->new( -file => $configFile );
 	
 	$sourceHost = $cfg->val('source', 'host');
@@ -203,7 +206,8 @@ foreach $tableName (@tables) {
 	my $filePath = $siteRoot . "/$workTable.wrk";	
 	
 	# create file
-	`$mysql --host=$sourceHost --user=$sourceUser --password=$sourcePass $sourceDatabase -e "SELECT * FROM $tableName" | sed 's/NULL/\\\\N/g' > $filePath`;
+	$sourceConn->prepare(qq\SELECT * FROM $tableName INTO OUTFILE ?\)->execute($filePath);
+	#`$mysql --host=$sourceHost --user=$sourceUser --password=$sourcePass $sourceDatabase -e "SELECT * FROM $tableName" | sed 's/NULL/\\\\N/g' > $filePath`;
 		
 	#print("$mysql --host=$sourceHost --user=$sourceUser --password=$sourcePass $sourceDatabase -e \"SELECT * FROM $tableName\" | sed 's/NULL/\\\\N/g' > $filePath\n");
 	# check if the file path exists, if it doesn't, don't do a thing
@@ -273,12 +277,12 @@ foreach $tableName (@tables) {
 		}
 		
 		if ($tableSame) {
-			print("Tables are the same!\n");
+			print("Table structures are the same!\n");
 			# Create table at destination
 			$destConn->do("CREATE TABLE $workTable LIKE $tableName");
 		}
 		else {
-			print("Tables are different, cloning new table structure\n");
+			print("Table structures are different, cloning new table structure\n");
 			$sourceConn->do("CREATE TABLE $workTable LIKE $tableName");
 			$handle = $sourceConn->prepare("SHOW CREATE TABLE $workTable");
 			$handle->execute();
@@ -292,7 +296,9 @@ foreach $tableName (@tables) {
 		# Populate work table
 		#$destConn->do("LOAD DATA INFILE '$filePath' INTO TABLE $workTable");
 		$destConn->do("SET GLOBAL SQL_MODE='NO_AUTO_VALUE_ON_ZERO'");
-		print(`$mysqlimport --local --ignore-lines=1 --host=$destHost --user=$destUser --password=$destPass $destDatabase $filePath`);
+#		print(`$mysqlimport --local --host=$destHost --user=$destUser --password=$destPass $destDatabase $filePath`);
+        $destConn->prepare("LOAD DATA INFILE ? INTO TABLE $workTable")->execute($filePath);
+		#print(`$mysqlimport --local --ignore-lines=1 --host=$destHost --user=$destUser --password=$destPass $destDatabase $filePath`);
 		#Now, make sure that the row count in the created table is the same as the origin table. If it isn't, don't do a thing.
 #		$sourceConn->disconnect();
 #		$destConn->disconnect();
@@ -377,6 +383,8 @@ foreach $tableName (@tables) {
 			$destConn->do("ALTER TABLE $oldTable DROP FOREIGN KEY '$index'");
 		}
 	}
+	
+	&replaceTableConstraints($oldTable);
 }
 
 foreach $tableName (@tables) {
@@ -408,6 +416,23 @@ sub getTableConstraints {
 		push(@resultArray, $keyName);
 	}
 	return @resultArray;
+}
+
+sub replaceTableConstraints {
+    my $oldTable = shift;
+    my $handle = $destConn->prepare(qq\SELECT CONCAT("ALTER TABLE ", table_name, " DROP FOREIGN KEY ", constraint_name, ";" ) drop_command,
+     CONCAT("ALTER TABLE ", table_name, " ADD CONSTRAINT FOREIGN KEY ", constraint_name, " (", column_name, ") ", " REFERENCES ", REPLACE(referenced_table_name,'_old','') , " (", referenced_column_name, ") ON DELETE ", delete_rule, " ON UPDATE ", update_rule, ";" ) add_command
+     FROM (SELECT kcu.constraint_name, kcu.table_name, kcu.column_name, kcu.referenced_table_name, kcu.referenced_column_name, rc.update_rule, rc.delete_rule 
+         FROM information_schema.KEY_COLUMN_USAGE kcu 
+         INNER JOIN information_schema.REFERENTIAL_CONSTRAINTS rc 
+         ON kcu.constraint_name = rc.constraint_name 
+         WHERE kcu.referenced_table_name = '$oldTable') stuff;\);
+    $handle->execute();
+    $handle->bind_columns(\$drop_command, \$add_command);
+    while ($handle->fetch()) {
+        $destConn->do($drop_command);
+        $destConn->do($add_command);
+    }
 }
 
 # reset flag so that process can be used again by magento
